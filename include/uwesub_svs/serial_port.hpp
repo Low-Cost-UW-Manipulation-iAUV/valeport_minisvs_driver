@@ -46,6 +46,15 @@ namespace uwe_sub {
 				int openPort(std::string const& port, int baudrate=115200, bool flush = true);
 
 				/**
+				 * Changes the baudrate of the already established connection
+ 				 * @param baudrate BAUD rate at which to communicate at
+				 * @param flush Indicates if the port should be flushed as soon as it's opened
+				 * @return -1 if unsuccessful.
+				 * @return otherwise: File descriptor				 
+				 */
+				int set_baudrate(int baudrate, bool flush);
+
+				/**
 				 * Reads data from the port
 				 * @return -1 if unsuccessful.
 				 * @return Number of bytes read.

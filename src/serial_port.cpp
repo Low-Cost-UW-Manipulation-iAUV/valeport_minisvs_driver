@@ -53,6 +53,36 @@ namespace uwe_sub {
 
 		}
 
+		int SerialPort::set_baudrate(int baudrate, bool flush) {
+			
+			struct termios options;
+			tcgetattr(fd, &options);  // Get the current options for the port...
+			cfsetspeed(&options, baudrate);			// Set the baud rate
+			
+			tcsetattr(fd, TCSANOW, &options);     		// Set the new options for the port
+			fcntl(fd, F_SETFL, FNDELAY);			// non-blocking low level read
+			tcsetattr(fd, TCSANOW, &options);
+
+			if (fd == -1) {
+				return -1; //Failed to open the port
+			}
+			else {
+	
+				fcntl(fd, F_SETLK, 0); //Set the file lock
+		
+				if( tcgetattr(fd, &orig_terimos) < 0) {
+					return -1;
+				}
+
+				//Flush the port if told to
+				if (flush) {
+					flushPort();
+				}
+			}
+			return (fd);
+
+		}
+
 		void SerialPort::flushPort(void) {
 			tcflush(fd, TCIFLUSH); //Flush existing data	
 		}

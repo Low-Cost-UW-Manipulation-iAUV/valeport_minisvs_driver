@@ -11,7 +11,7 @@
 #include <unistd.h>
 //#include <boost/lexical_cast.hpp> // for converting strings to ...
 
-
+#define STD_BAUDRATE 19200
 
 #define TIMEOUT_PACKET 500
 #define TIMEOUT_REPLY 500
@@ -85,10 +85,10 @@ namespace uwe_sub {
 			public:
 				int initialize(std::string svsDeviceID, unsigned int baudrate) {
 					
-					if(openPort(svsDeviceID, baudrate, true)) {  // start serial
+					if(openPort(svsDeviceID, STD_BAUDRATE, true)) {  // start serial
 						
 						// write config over serial
-						
+
 						sendData("M32\x0A");	// ensure the device isn't  already paused, by bringing it up
 						
 						// wait for '>'						
@@ -96,7 +96,6 @@ namespace uwe_sub {
 							ROS_INFO("SVP ONLINE");
 						} else { 
 							ROS_ERROR("Expected SVP to reply with a packet, not recieved");
-							return -1;
 						}
 
 						sendData("#");		// send a stop command 
@@ -106,7 +105,35 @@ namespace uwe_sub {
 							ROS_INFO("SVP ONLINE");
 						} else { 
 							ROS_ERROR("Expected SVP to reply with '>', not recieved");
-							return -1;
+						}
+
+
+						// change the baudrate on the device to whatever is specified in the launchfile
+						std::stringstream ss;		// print the data
+						ss << "#059;"<<baudrate<<"\r";
+						sendData(ss.str());		// send a change baudrate command
+						ROS_INFO(ss.str().c_str() );
+						if(set_baudrate(baudrate, true)) {
+							ROS_INFO("changed the baudrate to %d", baudrate);
+						}
+
+						
+						sendData("M32\x0A");	// ensure the device isn't  already paused, by bringing it up
+						
+						// wait for '>'						
+						if(waitForData("\n", TIMEOUT_REPLY) == true) {
+							ROS_INFO("SVP ONLINE");
+						} else { 
+							ROS_ERROR("Expected SVP to reply with a packet, not recieved");
+						}
+
+						sendData("#");		// send a stop command 
+						
+						// wait for '>'						
+						if(waitForData(">", TIMEOUT_REPLY) == true) {
+							ROS_INFO("SVP ONLINE");
+						} else { 
+							ROS_ERROR("Expected SVP to reply with '>', not recieved");
 						}
 
 						sendData("#082;off\x0A"); // SETS DATA FORMAT TO STANDARD VALEPORT MODE
@@ -236,7 +263,7 @@ int main(int argc, char **argv)
 
 				//expecting: "<space>{pressure}<space>123456<cr><lf>" - e.g. " 09.981 0000000"
 				
-				if(svs_packet.size() == 16) {
+				if(svs_packet.size() == 16 || svs_packet.size() == 17) {
 					std::string depth_str = svs_packet.substr(1,6);
 					std::string speed_of_sound_str = svs_packet.substr(8,7);
 
