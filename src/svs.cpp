@@ -3,6 +3,7 @@
 #include <ctime>      //For timeout
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
+#include "geometry_msgs/PoseStamped.h"
 #include "uwesub_svs/serial_port.hpp"
 #include <iostream>
 #include <sstream>
@@ -11,7 +12,6 @@
 //#include <boost/lexical_cast.hpp> // for converting strings to ...
 
 
-#define svsDeviceID "/dev/ttyUSB2" // cannot do by-dev-id at the moment ... needs a solution
 
 #define TIMEOUT_PACKET 500
 #define TIMEOUT_REPLY 500
@@ -83,9 +83,9 @@ namespace uwe_sub {
 				}
 
 			public:
-				int initialize() {
+				int initialize(std::string svsDeviceID, unsigned int baudrate) {
 					
-					if(openPort(svsDeviceID,19200,true)) {  // start serial
+					if(openPort(svsDeviceID, baudrate, true)) {  // start serial
 						
 						// write config over serial
 						
@@ -192,25 +192,32 @@ int main(int argc, char **argv)
 
 	bool no_data = true;
 	std::string svs_packet;
-	std::stringstream ss;
+
+	// get the device data from the arguments send in the launchfile
+	std::string linux_device_path = argv[1];
+
+    unsigned baud = 0;
+    sscanf(argv[2], "%u", &baud);
+
 
 	ros::init(argc, argv, "svs");	
 
 	ros::NodeHandle n;		
 	// setup publisher for depth
 	// setup publisher for sos
-	ros::Publisher svs_depth_msg = n.advertise<std_msgs::Float32>("depth", 100); 
-	ros::Publisher svs_sos_msg = n.advertise<std_msgs::Float32>("speed_of_sound", 100);
+	ros::Publisher svs_depth_msg = n.advertise<geometry_msgs::PoseStamped>("/svs/depth", 100); 
+	ros::Publisher svs_sos_msg = n.advertise<std_msgs::Float32>("/svs/speed_of_sound", 100);
 
-	std_msgs::Float32 svs_depth;
+	geometry_msgs::PoseStamped svs_depth;
 	std_msgs::Float32 svs_sos;
+	unsigned int sequence_counter = 0;
 
 	ros::Rate r(1);
 
 	while(ros::ok())
 		{
 			if(no_data == true) {
-				while(svs.initialize() != 0) {
+				while(svs.initialize(linux_device_path, baud) != 0) {
 					ROS_ERROR("SVS not ready yet.");
 					r.sleep();
 				}
@@ -248,7 +255,13 @@ int main(int argc, char **argv)
 
 					// publish values
 					svs_sos.data = speed_of_sound / 1000.0;	// svs outputs in mm/s we want m/s
-					svs_depth.data = depth - 10.0;	// svs adds 10 to actual value
+
+					// Fill in the geometry_msgs::PoseStamped message
+					svs_depth.header.frame_id = "SVS_link";
+					svs_depth.header.stamp = ros::Time::now();
+					svs_depth.header.seq = sequence_counter;
+					sequence_counter++;
+					svs_depth.pose.position.z = depth - 10.0;	// svs adds 10 to actual value
 
 					svs_depth_msg.publish(svs_depth);
 					svs_sos_msg.publish(svs_sos);
