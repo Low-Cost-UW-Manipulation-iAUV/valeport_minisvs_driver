@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 #include <stdint.h>
+#include <unistd.h>
+
 
 /*! A class to manage IO of a Serial Port */
 
