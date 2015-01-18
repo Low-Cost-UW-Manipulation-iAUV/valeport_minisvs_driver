@@ -284,7 +284,7 @@ int main(int argc, char **argv)
 					svs_sos.data = speed_of_sound / 1000.0;	// svs outputs in mm/s we want m/s
 
 					// Fill in the geometry_msgs::PoseStamped message
-					svs_depth.header.frame_id = "SVS_link";
+					svs_depth.header.frame_id = "SVS";
 					svs_depth.header.stamp = ros::Time::now();
 					svs_depth.header.seq = sequence_counter;
 					sequence_counter++;
