@@ -3,8 +3,9 @@
 #include <ctime>      //For timeout
 #include "ros/ros.h"
 #include "std_msgs/Float32.h"
-#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "uwesub_svs/serial_port.hpp"
+#include "uwesub_svs/calibrate_covariance.hpp"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -91,7 +92,7 @@ namespace uwe_sub {
 
 						sendData("M32\x0A");	// ensure the device isn't  already paused, by bringing it up
 						
-						// wait for '>'						
+						// wait for '>'					
 						if(waitForData("\n", TIMEOUT_REPLY) == true) {
 							ROS_INFO("SVP ONLINE");
 						} else { 
@@ -213,7 +214,8 @@ namespace uwe_sub {
 } // namespace uwe_sub
 
 uwe_sub::svs::svsInterface svs;
-	
+
+
 int main(int argc, char **argv) 
 { // main (ros stuff)
 
@@ -232,12 +234,13 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;		
 	// setup publisher for depth
 	// setup publisher for sos
-	ros::Publisher svs_depth_msg = n.advertise<geometry_msgs::PoseStamped>("/svs/depth", 100); 
+	ros::Publisher svs_depth_msg = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("/svs/depth", 100); 
 	ros::Publisher svs_sos_msg = n.advertise<std_msgs::Float32>("/svs/speed_of_sound", 100);
 
-	geometry_msgs::PoseStamped svs_depth;
 	std_msgs::Float32 svs_sos;
 	unsigned int sequence_counter = 0;
+	bool variance_found = false;
+	calibration::calib_covariance calibration_tool(20);
 
 	ros::Rate r(1);
 
@@ -283,14 +286,23 @@ int main(int argc, char **argv)
 					// publish values
 					svs_sos.data = speed_of_sound / 1000.0;	// svs outputs in mm/s we want m/s
 
-					// Fill in the geometry_msgs::PoseStamped message
-					svs_depth.header.frame_id = "SVS";
-					svs_depth.header.stamp = ros::Time::now();
-					svs_depth.header.seq = sequence_counter;
-					sequence_counter++;
-					svs_depth.pose.position.z = depth - 10.0;	// svs adds 10 to actual value
+				
+					// Calibrate
+					if(calibration_tool.are_you_calibrated() == true) {
+							// Fill in the geometry_msgs::PoseWithCovarianceStamped message
+						geometry_msgs::PoseWithCovarianceStamped svs_depth;
+						svs_depth.header.frame_id = "SVS";
+						svs_depth.header.stamp = ros::Time::now();
+						svs_depth.header.seq = sequence_counter;
+						calibration_tool.get_variance(svs_depth.pose.covariance[14]);
+						svs_depth.pose.pose.position.z = depth ;	// SVS needs to be tared now and again
+						svs_depth_msg.publish(svs_depth);
+					// we haven't got any variance data.
+					} else {
+						calibration_tool.put_in(depth);
+						ROS_INFO("SVS: Determining depth variance");
+					}
 
-					svs_depth_msg.publish(svs_depth);
 					svs_sos_msg.publish(svs_sos);
 				
 				} else {
@@ -307,3 +319,4 @@ int main(int argc, char **argv)
 		
 	return 0;
 }
+

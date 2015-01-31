@@ -27,5 +27,7 @@ add_library(${PROJECT_NAME} src/serial_port.cpp )
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(svs src/svs.cpp)
-target_link_libraries(svs ${catkin_LIBRARIES} ${PROJECT_NAME})
+add_library(variance_tool src/calibrate_covariance.cpp )
+
+target_link_libraries(svs ${catkin_LIBRARIES} ${PROJECT_NAME} variance_tool)
 add_dependencies(svs std_msgs_generate_messages_cpp geometry_msgs_generate_messages_cpp)
