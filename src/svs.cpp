@@ -294,7 +294,9 @@ int main(int argc, char **argv)
 						svs_depth.header.frame_id = "SVS";
 						svs_depth.header.stamp = ros::Time::now();
 						svs_depth.header.seq = sequence_counter;
-						calibration_tool.get_variance(svs_depth.pose.covariance[14]);
+						double temp = 0;
+						calibration_tool.get_variance(temp);
+						svs_depth.pose.covariance[14] = temp;
 						svs_depth.pose.pose.position.z = depth ;	// SVS needs to be tared now and again
 						svs_depth_msg.publish(svs_depth);
 					// we haven't got any variance data.
