@@ -272,7 +272,7 @@ int main(int argc, char **argv)
 
 					//convert to numbers
 					long speed_of_sound = std::atol(speed_of_sound_str.c_str());
-					float depth = std::atof(depth_str.c_str());
+					float depth = std::atof(depth_str.c_str()) * -1;	// * -1 accounts for ENU frame. Going down will decrease the value
 
 					//print values
 					std::stringstream sos_ss;	// print the s_o_s
